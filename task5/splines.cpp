@@ -25,59 +25,50 @@ vector<double> thomas(vector<double>& A, vector<double>& B, vector<double>& C,
                       vector<double>& D) {
     int m = A.size();
     vector<double> alpha(m), beta(m);
-    alpha[0] = -C[0] / B[0];
-    beta[0] = D[0] / B[0];
+    double k1 = -C[0], k2 = -A[m - 1];
+    alpha[0] = k1;
+    beta[0] = D[0];
 
-    for (size_t i = 1; i < m; i++) {
-        double y = B[i] + A[i] * alpha[i - 1];
-        alpha[i] = -C[i] / y;
-        beta[i] = (D[i] - A[i] * beta[i - 1]) / y;
+    for (size_t i = 0; i < m - 2; i++) {
+        alpha[i + 1] = -C[i] / (A[i] * alpha[i] + B[i]);
+        beta[i + 1] = (D[i] - A[i] * beta[i]) / -(B[i] + A[i] * alpha[i]);
     }
 
-    vector<double> coefficients(m);
-    coefficients[m - 1] = beta[m - 1];
+    vector<double> roots(m);
+    roots[m - 1] = (D[m - 1] + k2 * beta[m - 1]) / (1 - k2 * alpha[m - 1]);
+
     for (int i = m - 2; i >= 0; --i) {
-        coefficients[i] = alpha[i] * coefficients[i + 1] + beta[i];
+        roots[i] = alpha[i + 1] * roots[i + 1] + beta[i + 1];
     }
 
-    return coefficients;
+    return roots;
 }
 
-vector<double> get_spline_coefficients(vector<double>& x, vector<double>& f,
+vector<double> get_spline_coefficients(vector<double>& x, vector<double>& y,
                                        double c0, double cn) {
     int n = x.size() - 1;  // number of segments
     vector<double> h(n);
-    int m = n - 1;  // SLE matrix dimension
+    int m = n + 1;  // SLE matrix dimension
     for (size_t i = 0; i < n; i++) h[i] = x[i + 1] - x[i];
     vector<double> A(m), B(m), C(m), D(m);
-    for (size_t i = 0; i < m; i++) {
-        if (i == 0) {
-            A[i] = 0;
-            B[i] = (h[0] + h[1]) / 3;
-            C[i] = h[1] / 6;
-            D[i] = (f[2] - f[1]) / h[1] - (f[1] - f[0]) / h[0] - h[0] * c0 / 6;
-        } else if (i == m - 1) {
-            A[i] = h[i] / 6;
-            B[i] = (h[i] + h[i + 1]) / 3;
-            C[i] = 0;
-            D[i] = (f[i + 2] - f[i + 1]) / h[i + 1] - (f[i + 1] - f[i]) / h[i] -
-                   h[i + 1] * cn / 6;
-        } else {
-            A[i] = h[i] / 6.0;
-            B[i] = (h[i] + h[i + 1]) / 3.0;
-            C[i] = h[i + 1] / 6.0;
-            D[i] = (f[i + 2] - f[i + 1]) / h[i + 1] - (f[i + 1] - f[i]) / h[i];
-        }
+
+    B[0] = 1;
+    C[0] = 0;
+    D[0] = c0;
+
+    A[m - 1] = 0;
+    B[m - 1] = 1;
+    D[m - 1] = cn;
+
+    for (size_t i = 1; i < m - 1; i++) {
+        A[i] = h[i - 1] / 6;
+        B[i] = (h[i - 1] + h[i]) / 3;
+        C[i] = h[i] / 6;
+        D[i] = (y[i + 1] - y[i]) / h[i] - (y[i] - y[i - 1]) / h[i - 1];
     }
 
     vector<double> c = thomas(A, B, C, D);
-    vector<double> full(n + 1);
-    full[0] = c0;
-    full[n] = cn;
-    for (int i = 1; i < n; ++i) {
-        full[i] = c[i - 1];
-    }
-    return full;
+    return c;
 }
 
 vector<double> get_spline_coefficients_2(vector<double>& x, vector<double>& y,
@@ -157,6 +148,7 @@ double avg_error(vector<double>& xs, std::function<double(double)> f,
     map<double, double> actual = interpolate(xs, f, lcond, rcond);
     vector<double> errors;
     for (auto const& [x, y] : actual) {
+        cout << "(" << x << ", " << y << ") ";
         errors.push_back(abs(y - f(x)));
     }
     return accumulate(errors.begin(), errors.end(), 0.0) / errors.size();
@@ -169,6 +161,7 @@ void cubic_spline_demo() {
         vector<double> x(n + 1);
         for (size_t i = 0; i < n + 1; i++) x[i] = 2.0 * i / n - 1;
         error_rel.insert(make_pair(n, avg_error(x, f, lcond, rcond)));
+        return;
     }
     for (auto const& [n, error] : error_rel) {
         cout << n << ": " << error << endl;
@@ -213,4 +206,4 @@ void de_demo() {
     // println(solution);
 }
 
-int main() { de_demo(); }
+int main() { cubic_spline_demo(); }

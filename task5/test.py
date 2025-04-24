@@ -21,11 +21,13 @@ def setup1():
         xs = list()
         for i in range(1, len(x)):
             xs += split_segment(x[i - 1], x[i], k)
-        xs.append(x[-1])
-        actual = cs(xs)
-        expected = list(map(f, xs))
-        error = np.average([abs(actual[i] - expected[i]) for i in range(len(actual))])
-        rel[n] = error
+        print(cs(xs))
+        return
+        # xs.append(x[-1])
+        # actual = cs(xs)
+        # expected = list(map(f, xs))
+        # error = np.average([abs(actual[i] - expected[i]) for i in range(len(actual))])
+        # rel[n] = error
     print(rel)
 
 

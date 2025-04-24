@@ -16,7 +16,7 @@ def setup1():
     for n in range(7, 20, 2):
         x = [2 * i / n - 1 for i in range(n + 1)]
         y = list(map(f, x))
-        cs = CubicSpline(x, y, bc_type=((2, 1), (2, 2)))
+        cs = CubicSpline(x, y, bc_type=((2, 0), (2, 0)))
         k = 10
         xs = list()
         for i in range(1, len(x)):

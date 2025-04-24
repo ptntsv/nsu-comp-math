@@ -155,7 +155,7 @@ double avg_error(vector<double>& xs, std::function<double(double)> f,
 }
 
 void cubic_spline_demo() {
-    double lcond = 1, rcond = 2;
+    double lcond = 0, rcond = 0;
     map<int, double> error_rel{};
     for (int n = 7; n < 20; n += 2) {
         vector<double> x(n + 1);

@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <iostream>
 #include <map>
+#include <numeric>
 #include <utility>
 #include <vector>
 
@@ -125,19 +126,21 @@ vector<double> split_segment(double begin, double end, int n) {
     return subsegments;
 }
 
-void interpolate(vector<double>& x, std::function<double(double)> f, double c0,
-                 double cn) {
+map<double, double> interpolate(vector<double>& x,
+                                std::function<double(double)> f, double c0,
+                                double cn) {
     vector<double> y(x.size());
     std::transform(x.begin(), x.end(), y.begin(), f);
     map<double, double> interpolated{};
     int m = x.size() - 1;
     int k = 10;  // number of points inside segment
     vector<double> h(m);
-    // vector<double> c(get_spline_coefficients(x, y, c0, cn));
-    vector<double> c(get_spline_coefficients_2(x, y, c0, cn));
+    vector<double> c(get_spline_coefficients(x, y, c0, cn));
+    // vector<double> c(get_spline_coefficients_2(x, y, c0, cn));
     for (size_t i = 0; i < m; i++) h[i] = x[i + 1] - x[i];
     for (size_t i = 0; i < x.size() - 1; i++) {
         vector<double> subseg = split_segment(x[i], x[i + 1], k);
+        if (i + 1 == x.size() - 1) subseg.push_back(x[x.size() - 1]);
         for (auto& s : subseg) {
             double spline = eval_spline_polynomial(
                 s, make_pair(y[i], y[i + 1]), make_pair(x[i], x[i + 1]), h[i],
@@ -145,18 +148,69 @@ void interpolate(vector<double>& x, std::function<double(double)> f, double c0,
             interpolated.insert(make_pair(s, spline));
         }
     }
-    interpolated.insert(make_pair(x[x.size() - 1], y[y.size() - 1]));
-    for (auto& tuple : interpolated) {
-        cout << setprecision(7) << tuple.second << " ";
-    }
-    cout << endl;
+    return interpolated;
 }
 
-int main() {
-    for (int n = 7; n < 10; n += 2) {
+double avg_error(vector<double>& xs, std::function<double(double)> f,
+                 double lcond, double rcond) {
+    int n = xs.size();
+    map<double, double> actual = interpolate(xs, f, lcond, rcond);
+    vector<double> errors;
+    for (auto const& [x, y] : actual) {
+        errors.push_back(abs(y - f(x)));
+    }
+    return accumulate(errors.begin(), errors.end(), 0.0) / errors.size();
+}
+
+void cubic_spline_demo() {
+    double lcond = 1, rcond = 2;
+    map<int, double> error_rel{};
+    for (int n = 7; n < 20; n += 2) {
         vector<double> x(n + 1);
         for (size_t i = 0; i < n + 1; i++) x[i] = 2.0 * i / n - 1;
-        interpolate(x, f, 4.0, 4.5);
-        break;
+        error_rel.insert(make_pair(n, avg_error(x, f, lcond, rcond)));
+    }
+    for (auto const& [n, error] : error_rel) {
+        cout << n << ": " << error << endl;
     }
 }
+
+vector<double> solve(const vector<double>& y, pair<int, int> order,
+                     pair<double, double> values, double h) {
+    if (order.first != 0 || order.first != 1 || order.second != 0 ||
+        order.second != 1)
+        return vector<double>{};
+
+    int m = y.size() - 2;
+    vector<double> A(m), B(m), C(m), D(m);
+    for (size_t i = 0; i < m; i++) {
+        if (i == 0) {
+            A[i] = 0;
+            B[i] = -2;
+            C[i] = 1;
+            D[i] = y[i] * h * h;
+        }
+    }
+    vector<double> roots = thomas(A, B, C, D);
+    vector<double> full(m + 2);
+
+    int n = A.size();
+}
+
+double u(double x) { return cos(x); }
+
+void de_demo() {
+    double offset = 1e-8;
+    double lcond = 0, rcond = 0;
+    double k = 10;
+    double a = -M_PI_2, b = M_PI_2;
+    vector<double> xs = split_segment(a + offset, b, k);
+    double h = (b - a - offset) / k;
+    vector<double> ys(xs.size());
+    transform(xs.begin(), xs.end(), ys.begin(), u);
+    // prep_coefficients(ys, A, B, C, D, lcond, rcond, h);
+    // vector<double> solution = thomas(A, B, C, D);
+    // println(solution);
+}
+
+int main() { de_demo(); }
